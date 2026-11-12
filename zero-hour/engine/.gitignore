@@ -1,0 +1,107 @@
+# Ignore everything starting with dot, except specific files.
+.*
+!.editorconfig
+!.gitignore
+!.gitattributes
+!.github
+!.devin
+!.gitmodules
+
+*.user
+*.ncb
+/build*
+nbproject/
+project/
+doxygen/
+*.a
+*.o
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+*.so*
+CPackConfig.cmake
+CPackSourceConfig.cmake
+*.spec
+*.ncb
+*.sdf
+*.suo
+*.sln
+*.vcxproj*
+*.vcproj
+.cproject
+.project
+*~
+!*.exe
+*.lastbuildstate
+*.unsuccessfulbuild
+*.tlog
+*.idb
+*.cd
+*.tmp
+*.bak
+thumbs.db
+/CMakeUserPresets.json
+/.cache
+.clang-format
+/Dependencies/MaxSDK/maxsdk
+/tmp/
+
+## AI assistant config (user-specific)
+/.claude/
+/CLAUDE.local.md
+
+## IntelliJ, CLion, etc.
+/.idea
+
+# IntelliJ-style CMake bits
+cmake-build-*/
+
+## Ninja
+.ninja_deps
+.ninja_log
+build.ninja
+
+## Python
+__pycache__/
+*.pyc
+
+## Build Logs (generated during development)
+/logs/
+GeneralsMD/logs/
+Generals/logs/
+
+# vcpkg artifacts (generated dependencies)
+/vcpkg_installed/
+
+# Release bundles
+GeneralsX-macos-*.zip
+GeneralsXZH-macos-*.zip
+GeneralsX-linux-*.tar.gz
+GeneralsXZH-linux-*.tar.gz
+
+# flatpak build files (exclude staging/build dirs but track scripts and manifests)
+.flatpak-builder/
+flatpak/staging/
+flatpak/*.flatpak
+
+#tmp and log files on root folder
+logs_*.zip
+*.log
+# The engine binaries under web/public are committed on purpose - see the note there. The
+# symlinks to a local game install are not.
+web/public/Generals
+web/public/GeneralsZH
+.vercel
+.env*
+
+# Agent instructions: the committed copy is the canonical one. These are ignored so a local
+# working copy can be edited freely without the changes showing up as repository changes.
+
+# The provenance discovery document is served from /.well-known/, and the .* rule above would keep
+# the whole directory out of the repository - which it silently did, so the site 404ed while the
+# file sat in the working tree looking committed.
+!web/public/.well-known/
+!web/public/.well-known/*

@@ -1,0 +1,1908 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>GeneralsX · Browser runtime</title>
+    <link rel="icon" href="data:,">
+    <style>
+        :root {
+            /* GeneralsX @feature Codex 06/08/2026 Jarvis HUD language: near-black blue, cyan primary with glow,
+               orange accent, mono type. Angled cut corners stay (clip-path polygons below). */
+            --gx-background: hsl(210 100% 2%);
+            --gx-surface: hsl(210 100% 3%);
+            --gx-surface-raised: hsl(210 80% 5%);
+            --gx-border: hsl(188 100% 20%);
+            --gx-text: hsl(180 100% 90%);
+            --gx-text-muted: hsl(188 40% 60%);
+            --gx-accent: hsl(188 100% 50%);
+            --gx-accent-warm: hsl(33 100% 50%);
+            --gx-ready: hsl(150 100% 45%);
+            --gx-error: hsl(0 100% 60%);
+            --gx-glow: 0 0 10px hsl(188 100% 50% / .15), inset 0 0 15px hsl(188 100% 50% / .08);
+            --gx-cut: 14px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            min-height: 100%;
+            margin: 0;
+            background: var(--gx-background);
+            color: var(--gx-text);
+        }
+
+        body {
+            font-family: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+            background-image:
+                radial-gradient(ellipse at 50% 0%, hsl(188 100% 50% / .05), transparent 60%),
+                repeating-linear-gradient(0deg, transparent 0 2px, hsl(188 100% 50% / .015) 2px 4px);
+        }
+
+        button,
+        select {
+            min-height: 44px;
+            border: 1px solid var(--gx-border);
+            border-radius: 0;
+            background: var(--gx-surface-raised);
+            color: var(--gx-text);
+            font: inherit;
+        }
+
+        button {
+            --gx-cut-border: var(--gx-border);
+            --gx-cut-surface: var(--gx-surface-raised);
+            padding: 0 18px;
+            cursor: pointer;
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+            color: var(--gx-accent);
+            box-shadow: var(--gx-glow);
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            --gx-cut-border: var(--gx-accent);
+        }
+
+        button:focus-visible,
+        select:focus-visible,
+        canvas:focus-visible,
+        summary:focus-visible {
+            outline: 3px solid var(--gx-accent);
+            outline-offset: 3px;
+        }
+
+        select {
+            padding: 0 38px 0 12px;
+        }
+
+        .app-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+            min-height: 58px;
+            padding: 8px clamp(16px, 3vw, 40px);
+            border-bottom: 1px solid var(--gx-border);
+            background: linear-gradient(180deg, hsl(188 100% 50% / .06), transparent), var(--gx-surface);
+            box-shadow: 0 0 18px hsl(188 100% 50% / .12);
+        }
+
+        .identity {
+            display: flex;
+            align-items: baseline;
+            gap: 14px;
+        }
+
+        .identity h1 {
+            margin: 0;
+            font-size: clamp(20px, 2.4vw, 26px);
+            letter-spacing: 0.14em;
+            color: var(--gx-accent);
+            text-shadow: 0 0 12px hsl(188 100% 50% / .55);
+            text-transform: uppercase;
+        }
+
+        .identity p {
+            margin: 0;
+            color: var(--gx-text-muted);
+            font-size: 14px;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .language-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .language-control label {
+            color: var(--gx-text-muted);
+            font-size: 14px;
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: calc(100vh - 58px);
+            padding: 10px clamp(12px, 1.5vw, 24px);
+            gap: 10px;
+        }
+
+        .canvas-stage {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: grid;
+            place-items: center;
+        }
+
+        .runtime-bar {
+            --gx-cut-border: var(--gx-border);
+            --gx-cut-surface: var(--gx-surface);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            min-height: 52px;
+            margin-bottom: 14px;
+            padding: 8px 14px;
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--gx-cut)), calc(100% - var(--gx-cut)) 100%, 0 100%);
+        }
+
+        .status-group,
+        .capabilities {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        #status {
+            color: var(--gx-text);
+            font-size: 14px;
+            font-weight: 650;
+        }
+
+        .capability {
+            min-height: 30px;
+            padding: 5px 9px;
+            border-left: 3px solid var(--gx-border);
+            color: var(--gx-text-muted);
+            background: var(--gx-surface-raised);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: 12px;
+        }
+
+        .capability[data-state="ready"] {
+            border-color: var(--gx-ready);
+            color: var(--gx-text);
+        }
+
+        .capability[data-state="error"] {
+            border-color: var(--gx-error);
+        }
+
+        progress {
+            width: min(220px, 24vw);
+            height: 8px;
+            border: 0;
+            border-radius: 0;
+            background: var(--gx-surface-raised);
+        }
+
+        progress::-webkit-progress-bar {
+            background: var(--gx-surface-raised);
+        }
+
+        progress::-webkit-progress-value {
+            background: var(--gx-accent);
+        }
+
+        .canvas-shell {
+            --gx-cut-border: var(--gx-border);
+            --gx-cut-surface: #000;
+            position: relative;
+            display: grid;
+            place-items: center;
+            padding: 8px;
+            overflow: hidden;
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--gx-cut)), calc(100% - var(--gx-cut)) 100%, 0 100%);
+        }
+
+        canvas {
+            /* Sized by fitCanvas(): CSS max-% rules for replaced grid items size the track to the
+               content and let the game cover the frame lines, so JS owns the letterboxing. */
+            display: block;
+            border: 0;
+            background: #000;
+        }
+
+        .steam-gate {
+            position: absolute;
+            z-index: 6;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            background: hsl(210 100% 2% / .92);
+        }
+
+        .steam-gate[hidden] {
+            display: none;
+        }
+
+        .steam-gate-panel {
+            max-width: 460px;
+            padding: 28px 32px;
+            border: 1px solid var(--gx-border);
+            background: var(--gx-surface-raised);
+            box-shadow: var(--gx-glow);
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--gx-cut)), calc(100% - var(--gx-cut)) 100%, 0 100%);
+            text-align: center;
+        }
+
+        .firstrun-panel {
+            max-width: 780px;
+            text-align: left;
+        }
+
+        .firstrun-panel code {
+            color: var(--gx-accent-warm);
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .firstrun-lead {
+            margin-bottom: 18px;
+        }
+
+        .firstrun-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+
+        .firstrun-option {
+            padding: 16px;
+            border: 1px solid var(--gx-border);
+            background: hsl(210 100% 4%);
+        }
+
+        .firstrun-option h3 {
+            margin: 0 0 8px;
+            color: var(--gx-accent);
+            font-size: 14px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .info-badge {
+            min-height: 20px;
+            width: 20px;
+            margin-left: 6px;
+            padding: 0;
+            border-radius: 50%;
+            clip-path: none;
+            font-size: 12px;
+            line-height: 1;
+        }
+
+        .firstrun-note {
+            min-height: 1em;
+            color: var(--gx-accent-warm);
+            font-size: 12px;
+        }
+
+        .firstrun-info-panel {
+            margin-top: 16px;
+            padding: 14px;
+            border-left: 3px solid var(--gx-accent);
+            background: hsl(210 100% 4%);
+            font-size: 12px;
+        }
+
+        .firstrun-info-panel[hidden] {
+            display: none;
+        }
+
+        .steam-gate-panel h2 {
+            margin: 0 0 10px;
+            color: var(--gx-accent);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            text-shadow: 0 0 12px hsl(188 100% 50% / .5);
+        }
+
+        .steam-gate-panel p {
+            color: var(--gx-text-muted);
+            font-size: 13px;
+        }
+
+        .steam-gate-status {
+            color: var(--gx-accent-warm);
+            min-height: 1em;
+        }
+
+        .steam-chip {
+            padding: 6px 12px;
+            border-left: 3px solid var(--gx-ready);
+            background: var(--gx-surface-raised);
+            color: var(--gx-text);
+            font-size: 12px;
+        }
+
+        canvas.pointer-locked {
+            cursor: none !important;
+        }
+
+        .cursor-overlay {
+            position: fixed;
+            z-index: 5;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            image-rendering: pixelated;
+        }
+
+        .cursor-overlay[hidden] {
+            display: none;
+        }
+
+        .loading-layer {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-content: center;
+            gap: 12px;
+            padding: 24px;
+            background: var(--gx-background);
+            text-align: center;
+        }
+
+        .canvas-shell[data-ready="true"] .loading-layer {
+            display: none;
+        }
+
+        .developer-console {
+            --gx-cut-border: var(--gx-border);
+            --gx-cut-surface: rgb(9 10 11 / 96%);
+            position: absolute;
+            z-index: 4;
+            right: 12px;
+            bottom: 12px;
+            left: 12px;
+            max-height: min(46vh, 420px);
+            padding: 12px;
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+        }
+
+        button,
+        .runtime-bar,
+        .canvas-shell,
+        .developer-console {
+            isolation: isolate;
+            overflow: hidden;
+            border: 0;
+            background: var(--gx-cut-border);
+        }
+
+        button::before,
+        .runtime-bar::before,
+        .canvas-shell::before,
+        .developer-console::before {
+            position: absolute;
+            z-index: -1;
+            inset: 1px;
+            clip-path: inherit;
+            background: var(--gx-cut-surface);
+            content: "";
+        }
+
+        button {
+            position: relative;
+        }
+
+        .developer-console[hidden] {
+            display: none;
+        }
+
+        .developer-console-output {
+            min-height: 64px;
+            max-height: min(34vh, 310px);
+            margin: 0 0 10px;
+            overflow: auto;
+            color: var(--gx-text-muted);
+            font: inherit;
+            white-space: pre-wrap;
+        }
+
+        .developer-console-form {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 8px;
+            align-items: center;
+            color: var(--gx-accent);
+        }
+
+        #developer-console-input {
+            width: 100%;
+            min-height: 38px;
+            border: 0;
+            border-bottom: 1px solid var(--gx-border);
+            border-radius: 0;
+            outline: 0;
+            background: transparent;
+            color: var(--gx-text);
+            font: inherit;
+        }
+
+        #developer-console-input:focus {
+            border-color: var(--gx-accent);
+        }
+
+        .loading-layer strong {
+            color: var(--gx-text);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: 18px;
+        }
+
+        .loading-layer span {
+            color: var(--gx-text-muted);
+        }
+
+        details {
+            margin-top: 14px;
+            border: 1px solid var(--gx-border);
+            background: var(--gx-surface);
+        }
+
+        summary {
+            min-height: 44px;
+            padding: 12px 14px;
+            cursor: pointer;
+            color: var(--gx-text-muted);
+        }
+
+        #output {
+            display: block;
+            width: 100%;
+            min-height: 150px;
+            margin: 0;
+            padding: 14px;
+            resize: vertical;
+            border: 0;
+            border-top: 1px solid var(--gx-border);
+            border-radius: 0;
+            outline: 0;
+            background: #090a0b;
+            color: var(--gx-text);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: 12px;
+        }
+
+        @media (max-width: 760px) {
+            .app-header,
+            .identity,
+            .runtime-bar {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .app-header,
+            .runtime-bar {
+                gap: 12px;
+            }
+
+            .header-controls,
+            .language-control,
+            .status-group,
+            .capabilities {
+                flex-wrap: wrap;
+            }
+
+            .header-controls > *,
+            .language-control select {
+                flex: 1;
+            }
+
+            progress {
+                width: 100%;
+            }
+
+            canvas {
+                max-height: none;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="app-header">
+        <div class="identity">
+            <h1>GeneralsX</h1>
+            <p data-copy="subtitle"></p>
+        </div>
+        <div class="header-controls">
+            <span id="steam-chip" class="steam-chip" hidden></span>
+            <button id="clear-data" type="button" title="Clear saved settings and ownership, then reload">Reset</button>
+            <label class="boot-control">
+                <span data-copy="aspect"></span>
+                <select id="aspect-mode">
+                    <option value="16:9">16:9</option>
+                    <option value="4:3">4:3</option>
+                </select>
+            </label>
+            <label class="boot-control">
+                <span data-copy="boot"></span>
+                <select id="boot-mode">
+                    <option value="fast" data-copy="bootFast"></option>
+                    <option value="full" data-copy="bootFull"></option>
+                </select>
+            </label>
+            <button id="sound" type="button" data-copy="soundOn"></button>
+            <button id="fullscreen" type="button" data-copy="fullscreen"></button>
+        </div>
+    </header>
+    <main>
+        <section class="runtime-bar" aria-labelledby="status">
+            <div class="status-group">
+                <span id="status" role="status" aria-live="polite"></span>
+                <progress id="progress" max="100" value="0" hidden></progress>
+            </div>
+            <div class="capabilities" aria-label="Runtime capabilities">
+                <span class="capability" id="wasm-capability"></span>
+                <span class="capability" id="webgpu-capability"></span>
+            </div>
+        </section>
+        <div class="canvas-stage" id="canvas-stage">
+        <section class="canvas-shell" id="canvas-shell" data-ready="false">
+            <canvas id="canvas" tabindex="0"></canvas>
+            <img id="cursor-overlay" class="cursor-overlay" alt="" hidden>
+            <div id="firstrun-gate" class="steam-gate" hidden>
+                <div class="steam-gate-panel firstrun-panel">
+                    <h2>Prove you own the game</h2>
+                    <p class="firstrun-lead">GeneralsX runs your own copy of <strong>Command &amp; Conquer Generals —
+                       Zero Hour</strong>. Choose one:</p>
+                    <div class="firstrun-options">
+                        <div class="firstrun-option">
+                            <h3>1 · Sign in through Steam</h3>
+                            <p>Verifies ownership on your Steam account. Nothing is downloaded.</p>
+                            <button id="firstrun-steam" type="button">Sign in through Steam</button>
+                            <p class="firstrun-note" id="firstrun-steam-note"></p>
+                        </div>
+                        <div class="firstrun-option">
+                            <h3>2 · Select your game folder
+                                <button class="info-badge" type="button" id="firstrun-info"
+                                        aria-label="Where to find the game folder">i</button>
+                            </h3>
+                            <p>Point the browser at your installed copy. The files stay on your machine.</p>
+                            <button id="firstrun-folder" type="button">Select game folder</button>
+                            <p class="firstrun-note" id="firstrun-folder-note"></p>
+                        </div>
+                    </div>
+                    <div class="firstrun-info-panel" id="firstrun-info-panel" hidden>
+                        <p>If Steam is installed in the default location on drive C:</p>
+                        <p><strong>Command &amp; Conquer: Generals</strong><br>
+                           <code>C:\\Program Files (x86)\\Steam\\steamapps\\common\\Command and Conquer Generals\\</code></p>
+                        <p><strong>Generals: Zero Hour</strong><br>
+                           <code>C:\\Program Files (x86)\\Steam\\steamapps\\common\\Command &amp; Conquer Generals - Zero Hour\\</code></p>
+                        <p>The main executable is <code>Generals.exe</code>. To open the folder directly:
+                           Steam → Library → right-click the game → Manage → Browse local files.</p>
+                        <p>On macOS/Linux, pick the folder that contains the game's <code>.big</code> archives
+                           (<code>INIZH.big</code>, <code>TexturesZH.big</code>, <code>AudioZH.big</code>…).
+                           Select the <strong>Zero Hour</strong> folder; you will be asked for the base
+                           <strong>Generals</strong> folder next.</p>
+                    </div>
+                </div>
+            </div>
+            <div id="steam-gate" class="steam-gate" hidden>
+                <div class="steam-gate-panel">
+                    <h2 data-copy="steamTitle"></h2>
+                    <p data-copy="steamText"></p>
+                    <button id="steam-login" type="button" data-copy="steamButton"></button>
+                    <p class="steam-gate-status" id="steam-gate-status"></p>
+                </div>
+            </div>
+            <div class="loading-layer" id="loading-layer">
+                <strong data-copy="loadingTitle"></strong>
+                <span data-copy="localData"></span>
+            </div>
+            <section class="developer-console" id="developer-console" hidden>
+                <pre class="developer-console-output" id="developer-console-output" aria-live="polite"></pre>
+                <form class="developer-console-form" id="developer-console-form">
+                    <span aria-hidden="true">&gt;</span>
+                    <input id="developer-console-input" autocomplete="off" autocapitalize="off" spellcheck="false">
+                </form>
+            </section>
+        </div>
+        </section>
+        <details>
+            <summary data-copy="runtimeLog"></summary>
+            <textarea id="output" readonly aria-label="Runtime log"></textarea>
+        </details>
+    </main>
+    <script>
+        const copy = {
+            en: {
+                title: "GeneralsX · Browser runtime",
+                subtitle: "WebAssembly + WebGPU",
+                language: "Language",
+                fullscreen: "Fullscreen",
+                boot: "Boot",
+                aspect: "Display",
+                bootFast: "Fast start",
+                bootFull: "Full start",
+                steamTitle: "Steam verification",
+                steamText: "Sign in through Steam to prove you own Command & Conquer Generals — Zero Hour before playing.",
+                steamButton: "Sign in through Steam",
+                soundOn: "Sound on",
+                soundOff: "Sound off",
+                loadingTitle: "Preparing the battlefield",
+                localData: "Uses game data selected from your local, legally owned installation.",
+                runtimeLog: "Runtime log",
+                downloading: "Loading game data…",
+                preparing: "Preparing runtime…",
+                running: "Running",
+                failed: "Runtime failed. Open the runtime log for details.",
+                wasmReady: "WASM ready",
+                wasmMissing: "WASM unavailable",
+                webgpuReady: "WebGPU ready",
+                webgpuMissing: "WebGPU unavailable",
+                consoleLabel: "Developer console",
+                consoleHint: "Type help. Tab completes commands. Up and Down browse history."
+            },
+            "pt-BR": {
+                title: "GeneralsX · Execução no navegador",
+                subtitle: "WebAssembly + WebGPU",
+                language: "Idioma",
+                fullscreen: "Tela cheia",
+                boot: "Boot",
+                aspect: "Display",
+                bootFast: "Início rápido",
+                bootFull: "Início completo",
+                steamTitle: "Verificação Steam",
+                steamText: "Entre com a Steam para provar que você possui Command & Conquer Generals — Zero Hour antes de jogar.",
+                steamButton: "Entrar com a Steam",
+                soundOn: "Som ligado",
+                soundOff: "Som desligado",
+                loadingTitle: "Preparando o campo de batalha",
+                localData: "Usa dados do jogo selecionados da sua instalação local e legalmente adquirida.",
+                runtimeLog: "Registro de execução",
+                downloading: "Carregando dados do jogo…",
+                preparing: "Preparando a execução…",
+                running: "Em execução",
+                failed: "A execução falhou. Abra o registro para ver os detalhes.",
+                wasmReady: "WASM disponível",
+                wasmMissing: "WASM indisponível",
+                webgpuReady: "WebGPU disponível",
+                webgpuMissing: "WebGPU indisponível",
+                consoleLabel: "Console de desenvolvimento",
+                consoleHint: "Digite help. Tab completa comandos. Cima e Baixo navegam no histórico."
+            }
+        };
+
+        const canvas = document.getElementById("canvas");
+        const canvasShell = document.getElementById("canvas-shell");
+        const statusElement = document.getElementById("status");
+        const progressElement = document.getElementById("progress");
+        const outputElement = document.getElementById("output");
+        const developerConsole = document.getElementById("developer-console");
+        const developerConsoleOutput = document.getElementById("developer-console-output");
+        const developerConsoleForm = document.getElementById("developer-console-form");
+        const developerConsoleInput = document.getElementById("developer-console-input");
+        const wasmCapability = document.getElementById("wasm-capability");
+        const webgpuCapability = document.getElementById("webgpu-capability");
+        const runtimeQuery = new URLSearchParams(window.location.search);
+        const runtimeArguments = [];
+        // GeneralsX @feature Codex 06/08/2026 Boot flags: fast start (-quickstart, no shell map) or the full
+        // boot with logos and the animated shell-map menu. Persisted; ?boot=fast|full overrides.
+        const bootModeRaw = runtimeQuery.get("boot") || localStorage.getItem("generalsX.bootMode") || "fast";
+        const bootMode = bootModeRaw === "full" ? "full" : "fast";
+
+        // GeneralsX @bugfix Codex 05/08/2026 Audio off by default: with the audio manager live the engine never
+        // steps logic in the browser (black screen). Opt in with ?sound=1 until that engine bug is fixed.
+        // Mute goes through the engine's own audio manager; NEVER wrap window.AudioContext here.
+        const soundEnabled = runtimeQuery.get("sound") !== "0";
+        let soundMuted = localStorage.getItem("generalsX.soundMuted") === "1";
+
+        function setSoundMuted(muted) {
+            soundMuted = muted;
+            localStorage.setItem("generalsX.soundMuted", muted ? "1" : "0");
+            Module._GeneralsXSetAudioMuted?.(muted ? 1 : 0);
+            for (const button of document.querySelectorAll("#sound")) {
+                button.dataset.copy = muted ? "soundOff" : "soundOn";
+            }
+            renderCopy();
+        }
+        const replayPath = runtimeQuery.get("replay");
+        const pauseFrame = runtimeQuery.get("pauseFrame");
+        const captureFrameDelay = runtimeQuery.get("captureFrameDelay");
+        const captureFrameCount = runtimeQuery.get("captureFrameCount");
+        const saveStateFrame = runtimeQuery.get("saveStateFrame");
+        const saveState = runtimeQuery.get("saveState");
+        const maxCameraHeight = runtimeQuery.get("maxCameraHeight");
+        const minCameraHeight = runtimeQuery.get("minCameraHeight");
+        const terrainDrawDistanceScale = runtimeQuery.get("terrainDrawDistanceScale");
+        const staticGameLOD = runtimeQuery.get("staticGameLOD");
+        const shadowVolumes = runtimeQuery.get("shadowVolumes");
+        const isBotStress = runtimeQuery.get("stress") === "bots";
+        const replaySpeed = /^(?:[1-9]|10)$/.test(runtimeQuery.get("replaySpeed") || "")
+            ? runtimeQuery.get("replaySpeed") : "1";
+        const replayCheckpointInterval = /^[1-9]\d*$/.test(runtimeQuery.get("replayCheckpointInterval") || "")
+            ? runtimeQuery.get("replayCheckpointInterval") : "";
+        const defaultStressMap = "maps\\alpine assault\\alpine assault.map";
+        const stressMapCandidate = runtimeQuery.get("stressMap") || defaultStressMap;
+        const stressFactionCandidate = runtimeQuery.get("stressFaction") || "FactionAmerica";
+        const botStressMap = /^[A-Za-z0-9 _/\\.-]+$/.test(stressMapCandidate) && !stressMapCandidate.includes("..")
+            ? stressMapCandidate : defaultStressMap;
+        const botStressFaction = /^[A-Za-z0-9_]+$/.test(stressFactionCandidate)
+            ? stressFactionCandidate : "FactionAmerica";
+        const botStressSeed = /^[1-9]\d*$/.test(runtimeQuery.get("stressSeed") || "")
+            ? runtimeQuery.get("stressSeed") : "20260804";
+        const botStressFrames = /^[1-9]\d*$/.test(runtimeQuery.get("stressFrames") || "")
+            ? runtimeQuery.get("stressFrames") : "27000";
+        const botStressSpeed = /^(?:[1-9]|10)$/.test(runtimeQuery.get("stressSpeed") || "")
+            ? runtimeQuery.get("stressSpeed") : "10";
+        const isReplayPath = /^\/GeneralsReplays\/[A-Za-z0-9_.-]+\.rep$/.test(replayPath || "");
+        const isReplayStress = isReplayPath && replaySpeed !== "1";
+        const isReferenceReplay = replayPath === "/GeneralsReplays/visual-reference.rep";
+        const isAutomatedLan = runtimeQuery.get("lan") === "1" && runtimeQuery.get("test") === "1";
+        const saveStateUrl = saveState ? new URL(saveState, window.location.href) : null;
+        const isReferenceState = saveStateUrl?.origin === window.location.origin
+            && saveStateUrl.pathname.endsWith("/GeneralsXParity.sav");
+        const isPositiveReal = (value) => /^[1-9]\d*(?:\.\d+)?$/.test(value || "");
+        const hasReferenceSettings = (isReferenceReplay || isReferenceState)
+            && isPositiveReal(maxCameraHeight)
+            && isPositiveReal(minCameraHeight)
+            && isPositiveReal(terrainDrawDistanceScale)
+            && ["Low", "Medium", "High", "VeryHigh"].includes(staticGameLOD);
+        const isAutomatedTest = isReferenceState
+            || /^[1-9]\d*$/.test(pauseFrame || "")
+            || runtimeQuery.get("test") === "1"
+            || isBotStress;
+        if (isAutomatedTest) {
+            runtimeArguments.push("-noshellmap"); // parity paths expect exactly the historical arguments
+        } else if (bootMode === "fast") {
+            runtimeArguments.push("-quickstart", "-noshellmap");
+        }
+        if (isAutomatedTest || !soundEnabled) {
+            runtimeArguments.push("-noaudio");
+        }
+        // GeneralsX @bugfix Codex 05/08/2026 No -win/-xres/-yres on normal play: CLI resolution args black out the
+        // renderer in this build. Widescreen needs proper display-mode support in the engine first.
+        if (isReplayPath || isReferenceState) {
+            runtimeArguments.push("-win", "-xres", "1024", "-yres", "768");
+            if (isReplayPath) {
+                runtimeArguments.push("-replay", replayPath, "-replayspeed", replaySpeed);
+                if (replayCheckpointInterval) {
+                    runtimeArguments.push("-replaycheckpointinterval", replayCheckpointInterval);
+                }
+            } else {
+                runtimeArguments.push("-loadstate", "GeneralsXParity.sav");
+            }
+            if (/^[1-9]\d*$/.test(pauseFrame || "")) {
+                runtimeArguments.push("-pauseframe", pauseFrame);
+            }
+            if (/^[1-9]\d*$/.test(captureFrameDelay || "")) {
+                runtimeArguments.push("-captureframedelay", captureFrameDelay);
+            }
+            if (/^[1-9]\d*$/.test(captureFrameCount || "")) {
+                runtimeArguments.push("-captureframecount", captureFrameCount);
+            }
+            if (/^[1-9]\d*$/.test(saveStateFrame || "")) {
+                runtimeArguments.push("-savestateframe", saveStateFrame);
+            }
+            if (isPositiveReal(maxCameraHeight)) {
+                runtimeArguments.push("-maxcameraheight", maxCameraHeight);
+            }
+            if (isPositiveReal(minCameraHeight)) {
+                runtimeArguments.push("-mincameraheight", minCameraHeight);
+            }
+            if (shadowVolumes === "off") {
+                runtimeArguments.push("-noshadowvolumes");
+            }
+        }
+        if (isBotStress) {
+            runtimeArguments.push(
+                "-win", "-xres", "1024", "-yres", "768",
+                "-botmatch", botStressMap, botStressFaction, botStressSeed, botStressFrames, botStressSpeed
+            );
+        }
+        const supportedLocale = navigator.language.toLowerCase().startsWith("pt") ? "pt-BR" : "en";
+        let locale = supportedLocale;
+        let statusKey = "downloading";
+        let totalDependencies = 0;
+
+        const text = (key) => copy[locale][key];
+
+        function renderCopy() {
+            document.documentElement.lang = locale;
+            document.title = text("title");
+            document.querySelectorAll("[data-copy]").forEach((element) => {
+                element.textContent = text(element.dataset.copy);
+            });
+            statusElement.textContent = text(statusKey);
+
+            const hasWasm = typeof WebAssembly === "object";
+            const hasWebGPU = "gpu" in navigator;
+            wasmCapability.dataset.state = hasWasm ? "ready" : "error";
+            webgpuCapability.dataset.state = hasWebGPU ? "ready" : "error";
+            wasmCapability.textContent = text(hasWasm ? "wasmReady" : "wasmMissing");
+            webgpuCapability.textContent = text(hasWebGPU ? "webgpuReady" : "webgpuMissing");
+            developerConsole.setAttribute("aria-label", text("consoleLabel"));
+            developerConsoleInput.setAttribute("aria-label", text("consoleLabel"));
+        }
+
+        function setStatus(rawStatus) {
+            const raw = rawStatus || "";
+            const progress = raw.match(/\((\d+(?:\.\d+)?)\/(\d+)\)/);
+            if (progress) {
+                progressElement.value = Number(progress[1]);
+                progressElement.max = Number(progress[2]);
+                progressElement.hidden = false;
+            } else {
+                progressElement.hidden = true;
+            }
+
+            if (!raw) {
+                statusKey = "running";
+                canvasShell.dataset.ready = "true";
+            } else if (/exception|error|abort|fail/i.test(raw)) {
+                statusKey = "failed";
+            } else if (/download/i.test(raw)) {
+                statusKey = "downloading";
+            } else {
+                statusKey = "preparing";
+            }
+            statusElement.textContent = text(statusKey);
+        }
+
+        const runtimeOutputLines = [];
+        const runtimeOutputLineLimit = 512;
+        const runtimeOutputCharacterLimit = 4096;
+        const runtimeConsoleLineLimit = 128;
+        let lastRuntimeOutputLine = "";
+        let lastRuntimeOutputRepeatCount = 0;
+        let runtimeOutputRenderPending = false;
+        const runtimeLogStats = {
+            receivedLines: 0,
+            retainedLines: 0,
+            droppedLines: 0,
+            collapsedLines: 0,
+            truncatedLines: 0,
+            consoleLines: 0
+        };
+        window.generalsXRuntimeLogStats = runtimeLogStats;
+
+        // GeneralsX @feature Codex 05/08/2026 8 GiB guard; swap is allowed to work before we bail out.
+        const browserMemoryLimitBytes = 8 * 1024 * 1024 * 1024;
+        const browserMemoryStats = {
+            available: false,
+            bytes: 0,
+            limitBytes: browserMemoryLimitBytes,
+            tripped: false
+        };
+        let browserMemoryMeasurementPending = false;
+        window.generalsXBrowserMemoryStats = browserMemoryStats;
+
+        // GeneralsX @feature Codex 05/08/2026 Ship the runtime log to the server so crashes leave evidence.
+        // Queue every line separately: sendBeacon silently drops payloads over ~64KB, which lost the
+        // early boot lines (the ones that matter for init bugs). Batches go out via fetch instead.
+        const pendingShipLines = [];
+        let shipChain = Promise.resolve();
+        function shipRuntimeLog(useBeacon) {
+            if (!pendingShipLines.length) {
+                return;
+            }
+            const chunk = `${pendingShipLines.join("\n")}\n`;
+            pendingShipLines.length = 0;
+            if (useBeacon) {
+                navigator.sendBeacon?.("/GeneralsXLog", chunk);
+                return;
+            }
+            shipChain = shipChain.then(() =>
+                fetch("/GeneralsXLog", { method: "POST", body: chunk }).catch(() => {}));
+        }
+        setInterval(() => shipRuntimeLog(false), 2000);
+        window.addEventListener("pagehide", () => shipRuntimeLog(true));
+
+        async function enforceBrowserMemoryLimit() {
+            if (browserMemoryMeasurementPending || browserMemoryStats.tripped) {
+                return;
+            }
+            browserMemoryMeasurementPending = true;
+            try {
+                let bytes = window.performance?.memory?.usedJSHeapSize || 0;
+                if (typeof window.performance?.measureUserAgentSpecificMemory === "function") {
+                    bytes = (await window.performance.measureUserAgentSpecificMemory()).bytes;
+                }
+                browserMemoryStats.available = bytes > 0;
+                browserMemoryStats.bytes = bytes;
+                if (bytes >= browserMemoryLimitBytes) {
+                    browserMemoryStats.tripped = true;
+                    setStatus("Browser memory limit exceeded");
+                    retainRuntimeOutput(`[MEMORY_GUARD] tripped at ${bytes} bytes (limit ${browserMemoryLimitBytes})`, "error");
+                    try {
+                        localStorage.setItem("generalsX.lastCrashLog",
+                            runtimeOutputLines.slice(-400).join("\n"));
+                        localStorage.setItem("generalsX.lastCrashAt", new Date().toISOString());
+                    } catch (storageError) { /* quota — server copy still ships */ }
+                    shipRuntimeLog();
+                    window.location.replace("/GeneralsXCrash");
+                }
+            } catch (error) {
+                browserMemoryStats.available = false;
+            } finally {
+                browserMemoryMeasurementPending = false;
+            }
+        }
+
+        function scheduleRuntimeOutputRender() {
+            if (runtimeOutputRenderPending) {
+                return;
+            }
+            runtimeOutputRenderPending = true;
+            requestAnimationFrame(() => {
+                runtimeOutputRenderPending = false;
+                outputElement.value = runtimeOutputLines.length
+                    ? `${runtimeOutputLines.join("\n")}\n`
+                    : "";
+                outputElement.scrollTop = outputElement.scrollHeight;
+            });
+        }
+
+        function retainRuntimeOutput(rawLine, method) {
+            const line = rawLine.length > runtimeOutputCharacterLimit
+                ? `${rawLine.slice(0, runtimeOutputCharacterLimit)} [truncated]`
+                : rawLine;
+            runtimeLogStats.receivedLines += 1;
+            if (line.length !== rawLine.length) {
+                runtimeLogStats.truncatedLines += 1;
+            }
+            pendingShipLines.push(line);
+
+            if (line === lastRuntimeOutputLine && runtimeOutputLines.length) {
+                lastRuntimeOutputRepeatCount += 1;
+                runtimeLogStats.collapsedLines += 1;
+                runtimeOutputLines[runtimeOutputLines.length - 1] =
+                    `${line} [repeated ${lastRuntimeOutputRepeatCount} times]`;
+            } else {
+                lastRuntimeOutputLine = line;
+                lastRuntimeOutputRepeatCount = 1;
+                runtimeOutputLines.push(line);
+                if (runtimeOutputLines.length > runtimeOutputLineLimit) {
+                    runtimeOutputLines.shift();
+                    runtimeLogStats.droppedLines += 1;
+                }
+                if (runtimeLogStats.consoleLines < runtimeConsoleLineLimit) {
+                    // GeneralsX @bugfix Codex 05/08/2026 Engine logs all go to stderr; debug level keeps DevTools clean.
+                    console.debug(line);
+                    runtimeLogStats.consoleLines += 1;
+                }
+            }
+            runtimeLogStats.retainedLines = runtimeOutputLines.length;
+            scheduleRuntimeOutputRender();
+        }
+
+        function appendOutput(values, method) {
+            const line = values.map((value) => String(value)).join(" ");
+            const resultPrefix = "GENERALSX_BOT_MATCH_RESULT ";
+            const resultOffset = line.indexOf(resultPrefix);
+            if (resultOffset >= 0) {
+                try {
+                    window.generalsXBotMatchResult = JSON.parse(line.slice(resultOffset + resultPrefix.length));
+                    canvas.dataset.botMatchResult = "ready";
+                    requestAnimationFrame(() => {
+                        window.generalsXBotMatchCapture = {
+                            frame: window.generalsXBotMatchResult.logicFrame,
+                            width: canvas.width,
+                            height: canvas.height,
+                            dataUrl: canvas.toDataURL("image/png")
+                        };
+                    });
+                } catch (error) {
+                    console.error("Invalid bot-match result", error);
+                }
+            }
+            const replayPrefix = "GENERALSX_REPLAY_CHECKPOINT ";
+            const replayOffset = line.indexOf(replayPrefix);
+            if (replayOffset >= 0) {
+                try {
+                    window.generalsXReplayCheckpoint = JSON.parse(line.slice(replayOffset + replayPrefix.length));
+                    canvas.dataset.replayCheckpoint = "ready";
+                } catch (error) {
+                    console.error("Invalid replay checkpoint", error);
+                }
+            }
+            const replayResultPrefix = "GENERALSX_REPLAY_RESULT ";
+            const replayResultOffset = line.indexOf(replayResultPrefix);
+            if (replayResultOffset >= 0) {
+                try {
+                    window.generalsXReplayResult = JSON.parse(line.slice(replayResultOffset + replayResultPrefix.length));
+                    canvas.dataset.replayResult = "ready";
+                } catch (error) {
+                    console.error("Invalid replay result", error);
+                }
+            }
+            const lanResultPrefix = "GENERALSX_LAN_MATCH_RESULT ";
+            const lanResultOffset = line.indexOf(lanResultPrefix);
+            if (lanResultOffset >= 0) {
+                try {
+                    window.generalsXLanMatchResult = JSON.parse(line.slice(lanResultOffset + lanResultPrefix.length));
+                    canvas.dataset.lanMatchResult = "ready";
+                } catch (error) {
+                    console.error("Invalid LAN match result", error);
+                }
+            }
+            retainRuntimeOutput(line, method);
+        }
+
+        // GeneralsX @bugfix Codex 05/08/2026 Never request pointer lock: the browser hides the cursor while locked,
+        // and this build draws the cursor through the OS (RM_WINDOWS), so locking makes the pointer vanish.
+        // Fullscreen already keeps the mouse inside the game because the canvas covers the screen.
+        function enterFullscreen() {
+            // Fullscreen the framed shell, not the bare canvas: the drawn-cursor overlay must live inside
+            // the fullscreened subtree or the pointer turns invisible under pointer lock in fullscreen.
+            canvasShell.requestFullscreen().catch(() => {});
+        }
+
+        document.getElementById("fullscreen").addEventListener("click", enterFullscreen);
+        // GeneralsX @bugfix Codex 05/08/2026 Toggle the engine's own audio, never reload the page.
+        function toggleSound() {
+            setSoundMuted(!soundMuted);
+        }
+
+        const aspectSelect = document.getElementById("aspect-mode");
+        aspectSelect.value = localStorage.getItem("generalsX.aspect") === "4:3" ? "4:3" : "16:9";
+        aspectSelect.addEventListener("change", () => {
+            localStorage.setItem("generalsX.aspect", aspectSelect.value);
+            localStorage.setItem("generalsX.aspectApply", "1");
+            window.location.reload();
+        });
+
+        // GeneralsX @feature Codex 06/08/2026 Reset: wipe local settings + the Steam session cookie so the
+        // first-run ownership flow can be exercised from scratch.
+        document.getElementById("clear-data").addEventListener("click", () => {
+            localStorage.clear();
+            document.cookie = "gxsteam=; Path=/; Max-Age=0";
+            indexedDB.deleteDatabase("generalsx");
+            window.location.reload();
+        });
+
+        document.getElementById("firstrun-steam").addEventListener("click", () => {
+            window.location.href = "/GeneralsXSteamLogin";
+        });
+        document.getElementById("firstrun-info").addEventListener("click", () => {
+            const info = document.getElementById("firstrun-info-panel");
+            info.hidden = !info.hidden;
+        });
+        document.getElementById("firstrun-folder").addEventListener("click", async () => {
+            const note = document.getElementById("firstrun-folder-note");
+            if (!window.showDirectoryPicker) {
+                note.textContent = "This browser cannot pick folders. Use Chrome, or the Steam option.";
+                return;
+            }
+            try {
+                const zeroHour = await window.showDirectoryPicker({ id: "generalsx-zerohour", mode: "read" });
+                note.textContent = "Now select the base Generals folder…";
+                const generals = await window.showDirectoryPicker({ id: "generalsx-generals", mode: "read" });
+                const database = await new Promise((resolve, reject) => {
+                    const request = indexedDB.open("generalsx", 1);
+                    request.onupgradeneeded = () => request.result.createObjectStore("handles");
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+                const store = database.transaction("handles", "readwrite").objectStore("handles");
+                store.put(zeroHour, "GeneralsZH");
+                store.put(generals, "Generals");
+                note.textContent = "Folders saved. Reloading…";
+                window.setTimeout(() => window.location.reload(), 600);
+            } catch (error) {
+                note.textContent = `Folder selection cancelled: ${error.message}`;
+            }
+        });
+
+        const bootSelect = document.getElementById("boot-mode");
+        bootSelect.value = bootMode;
+        bootSelect.addEventListener("change", () => {
+            localStorage.setItem("generalsX.bootMode", bootSelect.value);
+            window.location.reload();
+        });
+
+        document.getElementById("sound").addEventListener("click", toggleSound);
+        for (const button of document.querySelectorAll("#sound")) {
+            button.dataset.copy = soundMuted ? "soundOff" : "soundOn";
+        }
+        if (soundMuted) {
+            // Re-apply the saved mute once the engine's audio manager exists (the export returns 1 then).
+            const applySavedMute = window.setInterval(() => {
+                if (Module._GeneralsXSetAudioMuted?.(1)) {
+                    window.clearInterval(applySavedMute);
+                }
+            }, 500);
+        }
+
+        document.addEventListener("fullscreenchange", fitCanvas);
+        document.addEventListener("fullscreenchange", () => {
+            if (!document.fullscreenElement && document.pointerLockElement) {
+                document.exitPointerLock?.();
+            }
+        });
+
+        // GeneralsX @bugfix Codex 06/08/2026 Letterbox the game inside the HUD frame in JS: the frame lines
+        // must stay visible around the render at any window size, and CSS cannot express that for a canvas
+        // whose attribute size the engine controls.
+        function fitCanvas() {
+            const stage = document.getElementById("canvas-stage");
+            const fullscreen = document.fullscreenElement === canvasShell;
+            const availWidth = (fullscreen ? window.innerWidth : stage.clientWidth) - 16;
+            const availHeight = (fullscreen ? window.innerHeight : stage.clientHeight) - 16;
+            const width = canvas.width || 1;
+            const height = canvas.height || 1;
+            const scale = Math.min(availWidth / width, availHeight / height);
+            canvas.style.width = `${Math.max(1, Math.floor(width * scale))}px`;
+            canvas.style.height = `${Math.max(1, Math.floor(height * scale))}px`;
+        }
+        new ResizeObserver(fitCanvas).observe(document.getElementById("canvas-stage"));
+        new MutationObserver(fitCanvas).observe(canvas, { attributes: true, attributeFilter: ["width", "height"] });
+        window.addEventListener("resize", fitCanvas);
+        fitCanvas();
+
+        canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+        // GeneralsX @feature Codex 05/08/2026 Keep the pointer inside the game until Esc, native-style.
+        // Pointer lock is the only browser confinement, but it hides the OS cursor and this build draws the
+        // cursor through the OS — so while locked, the page draws the game's cursor image (published by SDL as
+        // an inline CSS cursor) at the engine's authoritative position (GeneralsXMouseX/Y exports).
+        const cursorOverlay = document.getElementById("cursor-overlay");
+        let overlayCursorSource = "";
+
+        function parseCssCursor(value) {
+            const match = /url\(\s*"?([^")]+)"?\s*\)(?:\s+(\d+)\s+(\d+))?/.exec(value || "");
+            if (!match) {
+                return null;
+            }
+            return { url: match[1], hotX: Number(match[2] || 0), hotY: Number(match[3] || 0) };
+        }
+
+        function drawLockedCursor() {
+            if (document.pointerLockElement !== canvas) {
+                return;
+            }
+            const x = Module._GeneralsXMouseX?.() ?? -1;
+            const y = Module._GeneralsXMouseY?.() ?? -1;
+            const cursor = parseCssCursor(canvas.style.cursor);
+            if (cursor && x >= 0 && y >= 0) {
+                if (cursor.url !== overlayCursorSource) {
+                    overlayCursorSource = cursor.url;
+                    cursorOverlay.src = cursor.url;
+                }
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = rect.width / (canvas.width || 1);
+                const scaleY = rect.height / (canvas.height || 1);
+                cursorOverlay.hidden = false;
+                cursorOverlay.style.transform =
+                    `translate(${rect.left + x * scaleX - cursor.hotX}px, ${rect.top + y * scaleY - cursor.hotY}px)`;
+            } else {
+                cursorOverlay.hidden = true;
+            }
+            requestAnimationFrame(drawLockedCursor);
+        }
+
+        function setPointerLocked(locked) {
+            canvas.classList.toggle("pointer-locked", locked);
+            if (locked) {
+                drawLockedCursor();
+            } else {
+                cursorOverlay.hidden = true;
+            }
+        }
+
+        document.addEventListener("pointerlockchange", () => {
+            setPointerLocked(document.pointerLockElement === canvas);
+        });
+        document.addEventListener("pointerlockerror", () => {
+            setPointerLocked(false);
+        });
+
+        canvas.addEventListener("pointerdown", () => {
+            canvas.focus();
+            if (!document.pointerLockElement && !isAutomatedTest && canvasShell.dataset.ready === "true") {
+                canvas.requestPointerLock?.();
+            }
+        });
+
+        const consoleCommands = [
+            "args",
+            "capture",
+            "clear",
+            "close",
+            "cursor",
+            "frame",
+            "fullscreen",
+            "help",
+            "lan",
+            "language",
+            "mute",
+            "reload",
+            "replay",
+            "stress",
+            "status"
+        ];
+        const consoleHistory = [];
+        let consoleHistoryIndex = 0;
+
+        function writeConsole(value) {
+            developerConsoleOutput.textContent += `${value}\n`;
+            developerConsoleOutput.scrollTop = developerConsoleOutput.scrollHeight;
+        }
+
+        function setConsoleOpen(open) {
+            developerConsole.hidden = !open;
+            if (open) {
+                if (!developerConsoleOutput.textContent) {
+                    writeConsole(text("consoleHint"));
+                }
+                if (document.pointerLockElement) {
+                    document.exitPointerLock?.();
+                }
+                developerConsoleInput.focus();
+            } else {
+                developerConsoleInput.blur();
+                canvas.blur();
+            }
+        }
+
+        function setParityQuery(query, frame) {
+            query.set("replay", "/GeneralsReplays/visual-reference.rep");
+            query.set("pauseFrame", String(frame));
+            query.set("captureFrameDelay", "3");
+            query.set("captureFrameCount", "1");
+            query.set("maxCameraHeight", "350");
+            query.set("minCameraHeight", "100");
+            query.set("terrainDrawDistanceScale", "1.05");
+            query.set("staticGameLOD", "High");
+            query.set("shadowVolumes", "off");
+        }
+
+        function executeConsoleCommand(rawCommand) {
+            const commandLine = rawCommand.trim();
+            if (!commandLine) {
+                return "";
+            }
+
+            const [command, ...args] = commandLine.split(/\s+/);
+            switch (command.toLowerCase()) {
+                case "help":
+                    return "args | capture [frame] | clear | close | cursor free | frame <number> | fullscreen | help | lan open|identity <1-254>|host|join|map <2-8>|ai <slot> easy|medium|hard|accept|start|surrender|status | language en|pt-BR | mute | reload | replay [path] [frame|0] [speed] | status | stress bots|result";
+                case "args":
+                    return JSON.stringify({
+                        argc: Module._GeneralsXCommandLineArgc?.() ?? 0,
+                        replay: Boolean(Module._GeneralsXHasReplayArgument?.()),
+                        queuedReplays: Module._GeneralsXQueuedReplayCount?.() ?? 0
+                    });
+                case "status":
+                    return `status=${statusKey} logic=${Module._GeneralsXLogicFrame?.() ?? 0} frame=${canvas.dataset.referenceFrame || "running"} audio=${soundEnabled ? (soundMuted ? "muted" : "on") : "off"} cursor=${document.pointerLockElement ? "captured" : "free"} result=${window.generalsXBotMatchResult ? "ready" : "pending"} args=${runtimeArguments.join(" ")}`;
+                case "mute":
+                    if (!soundEnabled) {
+                        return "Audio is disabled for this session. Reload with ?sound=1 to enable it.";
+                    }
+                    setSoundMuted(!soundMuted);
+                    return soundMuted ? "Sound muted." : "Sound on.";
+                case "cursor":
+                    if (args[0] === "free") {
+                        document.exitPointerLock?.();
+                        canvas.blur();
+                        return "Cursor released.";
+                    }
+                    return "Usage: cursor free";
+                case "lan": {
+                    const action = args[0];
+                    if (action === "status") {
+                        return JSON.stringify({
+                            relay: window.generalsXLanStatus || null,
+                            state: Module._GeneralsXLanState?.() ?? 0,
+                            logicFrame: Module._GeneralsXLogicFrame?.() ?? 0,
+                            endFrame: Module._GeneralsXLanEndFrame?.() ?? 0
+                        });
+                    }
+                    if (action === "open") {
+                        if (!Module._GeneralsXOpenLanMenu?.()) {
+                            return "LAN menu is not ready.";
+                        }
+                        setConsoleOpen(false);
+                        return "Opening LAN lobby.";
+                    }
+                    if (action === "identity") {
+                        const client = Number(args[1]);
+                        return Number.isInteger(client) && client >= 1 && client <= 254
+                            && Module._GeneralsXLanSetIdentity?.(client)
+                            ? `LAN identity set to Browser${client}.`
+                            : "Usage: lan identity <1-254>";
+                    }
+                    if (action === "map") {
+                        const players = Number(args[1] || 2);
+                        return Number.isInteger(players) && players >= 2 && players <= 8
+                            && Module._GeneralsXLanSetMapMinPlayers?.(players)
+                            ? `Map set for ${players}+ players.`
+                            : "Usage: lan map <2-8>";
+                    }
+                    if (action === "ai") {
+                        const slot = Number(args[1]);
+                        const difficulty = { easy: 0, medium: 1, hard: 2 }[args[2] || "hard"];
+                        return Number.isInteger(slot) && difficulty !== undefined
+                            && Module._GeneralsXLanSetSlotAI?.(slot, difficulty)
+                            ? `Slot ${slot} set to ${args[2] || "hard"} AI.`
+                            : "Usage: lan ai <slot> easy|medium|hard";
+                    }
+                    const commands = {
+                        host: "_GeneralsXLanHost",
+                        join: "_GeneralsXLanJoinFirst",
+                        accept: "_GeneralsXLanAccept",
+                        start: "_GeneralsXLanStart",
+                        surrender: "_GeneralsXLanSurrender"
+                    };
+                    const exported = commands[action];
+                    if (exported) {
+                        return Module[exported]?.()
+                            ? `LAN ${action} requested.`
+                            : `LAN ${action} is not ready.`;
+                    }
+                    return "Usage: lan open|identity <1-254>|host|join|map <2-8>|ai <slot> easy|medium|hard|accept|start|surrender|status";
+                }
+                case "capture": {
+                    const frame = Number(args[0] || canvas.dataset.referenceFrame || 0);
+                    const capture = {
+                        frame,
+                        width: canvas.width,
+                        height: canvas.height,
+                        dataUrl: canvas.toDataURL("image/png")
+                    };
+                    window.generalsXReferenceCapture = capture;
+                    window.generalsXReferenceCaptures ??= [];
+                    window.generalsXReferenceCaptures.push(capture);
+                    return `Captured frame ${frame} at ${capture.width}x${capture.height}.`;
+                }
+                case "frame": {
+                    const frame = Number(args[0]);
+                    if (!Number.isInteger(frame) || frame < 1) {
+                        return "Usage: frame <positive integer>";
+                    }
+                    const query = new URLSearchParams(window.location.search);
+                    setParityQuery(query, frame);
+                    window.location.search = query.toString();
+                    return `Loading parity frame ${frame}.`;
+                }
+                case "replay": {
+                    const path = args[0] || "/GeneralsReplays/visual-reference.rep";
+                    const frame = Number(args[1] || 0);
+                    const speed = Number(args[2] || 1);
+                    if (!/^\/GeneralsReplays\/[A-Za-z0-9_.-]+\.rep$/.test(path)) {
+                        return "Replay path must be a local /GeneralsReplays/*.rep file.";
+                    }
+                    if (!Number.isInteger(speed) || speed < 1 || speed > 10) {
+                        return "Replay speed must be an integer from 1 to 10.";
+                    }
+                    const query = new URLSearchParams(window.location.search);
+                    if (Number.isInteger(frame) && frame > 0) {
+                        setParityQuery(query, frame);
+                    } else {
+                        query.set("replay", path);
+                        query.delete("pauseFrame");
+                        query.delete("captureFrameDelay");
+                        query.delete("captureFrameCount");
+                    }
+                    query.set("replaySpeed", String(speed));
+                    window.location.search = query.toString();
+                    return `Loading ${path} at ${speed}x.`;
+                }
+                case "stress": {
+                    if (args[0] === "result") {
+                        return window.generalsXBotMatchResult
+                            ? JSON.stringify(window.generalsXBotMatchResult)
+                            : "Bot stress result is not ready.";
+                    }
+                    if (args[0] !== "bots") {
+                        return "Usage: stress bots|result";
+                    }
+                    const query = new URLSearchParams();
+                    query.set("stress", "bots");
+                    query.set("stressMap", "03maps/alpine assault");
+                    query.set("stressFaction", "FactionAmerica");
+                    query.set("stressSeed", "20260804");
+                    query.set("stressFrames", "27000");
+                    query.set("stressSpeed", "10");
+                    window.location.search = query.toString();
+                    return "Starting deterministic Brutal bot stress match.";
+                }
+                case "fullscreen":
+                    enterFullscreen();
+                    return "Fullscreen requested.";
+                case "language":
+                    if (!copy[args[0]]) {
+                        return "Usage: language en|pt-BR";
+                    }
+                    locale = args[0];
+                    renderCopy();
+                    return `Language set to ${locale}.`;
+                case "reload":
+                    window.location.reload();
+                    return "Reloading.";
+                case "clear":
+                    developerConsoleOutput.textContent = "";
+                    return "";
+                case "close":
+                    setConsoleOpen(false);
+                    return "";
+                default:
+                    return `Unknown command: ${command}. Type help.`;
+            }
+        }
+
+        function runConsoleCommand(command) {
+            const normalized = command.trim();
+            if (!normalized) {
+                return "";
+            }
+            consoleHistory.push(normalized);
+            consoleHistoryIndex = consoleHistory.length;
+            writeConsole(`> ${normalized}`);
+            const result = executeConsoleCommand(normalized);
+            if (result) {
+                writeConsole(result);
+            }
+            return result;
+        }
+
+        function completeConsoleInput() {
+            const parts = developerConsoleInput.value.trimStart().split(/\s+/);
+            const values = parts.length === 1
+                ? consoleCommands
+                : parts[0] === "cursor"
+                    ? ["free"]
+                    : parts[0] === "language"
+                        ? ["en", "pt-BR"]
+                        : parts[0] === "replay"
+                            ? ["/GeneralsReplays/visual-reference.rep"]
+                            : [];
+            const prefix = parts.at(-1).toLowerCase();
+            const matches = values.filter((value) => value.toLowerCase().startsWith(prefix));
+            if (matches.length === 1) {
+                parts[parts.length - 1] = matches[0];
+                developerConsoleInput.value = parts.join(" ");
+            } else if (matches.length > 1) {
+                writeConsole(matches.join("  "));
+            }
+        }
+
+        developerConsoleForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+            runConsoleCommand(developerConsoleInput.value);
+            developerConsoleInput.value = "";
+        });
+
+        developerConsoleInput.addEventListener("keydown", (event) => {
+            if (event.key === "Tab") {
+                event.preventDefault();
+                completeConsoleInput();
+            } else if (event.key === "ArrowUp") {
+                event.preventDefault();
+                consoleHistoryIndex = Math.max(0, consoleHistoryIndex - 1);
+                developerConsoleInput.value = consoleHistory[consoleHistoryIndex] || "";
+            } else if (event.key === "ArrowDown") {
+                event.preventDefault();
+                consoleHistoryIndex = Math.min(consoleHistory.length, consoleHistoryIndex + 1);
+                developerConsoleInput.value = consoleHistory[consoleHistoryIndex] || "";
+            }
+        });
+
+        window.addEventListener("keydown", (event) => {
+            if (event.code === "Backquote" && !event.repeat) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                setConsoleOpen(developerConsole.hidden);
+                return;
+            }
+            if (!developerConsole.hidden) {
+                if (event.key === "Escape") {
+                    event.preventDefault();
+                    setConsoleOpen(false);
+                }
+                event.stopImmediatePropagation();
+            }
+        });
+
+        window.generalsXConsole = {
+            commands: [...consoleCommands],
+            execute: runConsoleCommand,
+            open: () => setConsoleOpen(true),
+            close: () => setConsoleOpen(false)
+        };
+
+        window.generalsXCaptureReferenceFrame = (frame) => {
+            window.generalsXReferenceCaptures ??= [];
+            if (window.generalsXReferenceCaptures.some((capture) => capture.frame === frame)) {
+                return;
+            }
+            requestAnimationFrame(() => {
+                const capture = {
+                    frame,
+                    width: canvas.width,
+                    height: canvas.height,
+                    dataUrl: canvas.toDataURL("image/png")
+                };
+                window.generalsXReferenceCaptures.push(capture);
+                window.generalsXReferenceCapture = capture;
+                canvas.dataset.referenceFrame = String(frame);
+            });
+        };
+
+        const modulePreRun = [];
+        const modulePostRun = [];
+
+        // GeneralsX @feature Codex 05/08/2026 Stream the game archives instead of packaging them into the wasm
+        // bundle. Reads must be genuinely synchronous: sync XHR is banned on the main thread, and Asyncify cannot
+        // unwind through the invoke_* JS frames the engine's try/catch scopes create. So a worker fetches 4 MiB
+        // chunks into a SharedArrayBuffer while the main thread spin-waits (COOP/COEP already gives us SAB), and
+        // an LRU keeps the engine's many small reads off the network.
+        const streamChunkSize = 4 * 1024 * 1024;
+        const streamCacheLimit = 192 * 1024 * 1024;
+        const streamCache = new Map();
+        const streamWorkerSource = `
+            postMessage("ready");
+            onmessage = async (event) => {
+                const { url, start, end, sab } = event.data;
+                const state = new Int32Array(sab, 0, 2);
+                const data = new Uint8Array(sab, 8);
+                try {
+                    const response = await fetch(url, { headers: { Range: "bytes=" + start + "-" + end } });
+                    if (!response.ok && response.status !== 206) {
+                        throw new Error("HTTP " + response.status);
+                    }
+                    const bytes = new Uint8Array(await response.arrayBuffer());
+                    data.set(bytes.subarray(0, data.length));
+                    state[1] = Math.min(bytes.length, data.length);
+                    Atomics.store(state, 0, 1);
+                } catch (error) {
+                    state[1] = 0;
+                    Atomics.store(state, 0, 2);
+                }
+            };`;
+        // The worker MUST be live before main() starts: once the engine spin-waits, the main thread never
+        // yields, and a not-yet-started worker can never start (the deadlock PTHREAD_POOL_SIZE exists for).
+        let streamWorker = null;
+        let streamBuffer = null;
+        let streamWorkerReady = null;
+        if (window.crossOriginIsolated) {
+            streamWorker = new Worker(URL.createObjectURL(
+                new Blob([streamWorkerSource], { type: "text/javascript" })));
+            streamBuffer = new SharedArrayBuffer(streamChunkSize + 8);
+            streamWorkerReady = new Promise((resolve) => {
+                streamWorker.addEventListener("message", resolve, { once: true });
+            });
+        }
+
+        function fetchStreamChunkSync(url, index) {
+            if (!streamWorker) {
+                appendOutput(["SharedArrayBuffer unavailable: archives cannot stream."], "error");
+                return new Uint8Array(0);
+            }
+            const state = new Int32Array(streamBuffer, 0, 2);
+            Atomics.store(state, 0, 0);
+            const start = index * streamChunkSize;
+            streamWorker.postMessage({
+                url: new URL(url, window.location.href).href,
+                start,
+                end: start + streamChunkSize - 1,
+                sab: streamBuffer
+            });
+            const deadline = Date.now() + 60000;
+            while (Atomics.load(state, 0) === 0) {
+                if (Date.now() > deadline) {
+                    appendOutput([`Archive fetch timed out: ${url} chunk ${index}`], "error");
+                    return new Uint8Array(0);
+                }
+            }
+            if (Atomics.load(state, 0) !== 1) {
+                appendOutput([`Archive fetch failed: ${url} chunk ${index}`], "error");
+                return new Uint8Array(0);
+            }
+            return new Uint8Array(streamBuffer.slice(8, 8 + state[1]));
+        }
+
+        function takeStreamChunk(url, index) {
+            const key = `${url}#${index}`;
+            const cached = streamCache.get(key);
+            if (cached) {
+                streamCache.delete(key); // re-insert to mark most recently used
+                streamCache.set(key, cached);
+                return cached;
+            }
+            const chunk = fetchStreamChunkSync(url, index);
+            streamCache.set(key, chunk);
+            let total = 0;
+            for (const value of streamCache.values()) {
+                total += value.length;
+            }
+            while (total > streamCacheLimit && streamCache.size > 1) {
+                const oldest = streamCache.keys().next().value;
+                total -= streamCache.get(oldest).length;
+                streamCache.delete(oldest);
+            }
+            return chunk;
+        }
+
+        function mountStreamedArchive(mount, name, url, size) {
+            const node = FS.createFile(mount, name, {}, true, false);
+            Object.defineProperty(node, "usedBytes", { get: () => size });
+            node.stream_ops = {
+                llseek: (stream, offset, whence) => {
+                    let position = offset;
+                    if (whence === 1) {
+                        position += stream.position;
+                    } else if (whence === 2) {
+                        position = size + offset;
+                    }
+                    if (position < 0) {
+                        throw new FS.ErrnoError(28);
+                    }
+                    return position;
+                },
+                read: (stream, buffer, offset, length, position) => {
+                    const end = Math.min(size, position + length);
+                    if (position >= end) {
+                        return 0;
+                    }
+                    const firstChunk = Math.floor(position / streamChunkSize);
+                    const lastChunk = Math.floor((end - 1) / streamChunkSize);
+                    let written = 0;
+                    for (let index = firstChunk; index <= lastChunk; index += 1) {
+                        const chunk = takeStreamChunk(url, index);
+                        const chunkStart = index * streamChunkSize;
+                        const from = Math.max(position, chunkStart) - chunkStart;
+                        const to = Math.min(end, chunkStart + chunk.length) - chunkStart;
+                        if (to <= from) {
+                            break; // short chunk: fetch failed or EOF
+                        }
+                        buffer.set(chunk.subarray(from, to), offset + written);
+                        written += to - from;
+                    }
+                    return written;
+                }
+            };
+        }
+
+        // GeneralsX @feature Codex 06/08/2026 Ownership gate: the game does not start until the server-side
+        // Steam session confirms login (and ownership when a Steam API key is configured). Fails open when the
+        // server has the gate disabled so local play keeps working.
+        modulePreRun.push(() => {
+            const dependency = "generalsx-steam-gate";
+            addRunDependency(dependency);
+            const gate = document.getElementById("steam-gate");
+            const gateStatus = document.getElementById("steam-gate-status");
+            const chip = document.getElementById("steam-chip");
+            document.getElementById("steam-login").addEventListener("click", () => {
+                window.location.href = "/GeneralsXSteamLogin";
+            });
+            fetch("/GeneralsXSteamSession")
+                .then((response) => response.json())
+                .then((session) => {
+                    if (!session.gate) {
+                        removeRunDependency(dependency);
+                        return;
+                    }
+                    if (session.authenticated && session.owns) {
+                        chip.textContent = `STEAM ✓ ${session.name || ""}`.trim();
+                        chip.hidden = false;
+                        removeRunDependency(dependency);
+                        return;
+                    }
+                    gate.hidden = false;
+                    if (session.authenticated && !session.owns) {
+                        gateStatus.textContent = session.reason
+                            || "Ownership not confirmed on this Steam account.";
+                    }
+                    // dependency intentionally never removed: no proof, no game.
+                })
+                .catch(() => removeRunDependency(dependency));
+        });
+
+        modulePreRun.push(() => {
+            const dependency = "generalsx-assets";
+            addRunDependency(dependency);
+            Promise.all([
+                fetch("/GeneralsXAssets").then((response) => response.json()),
+                streamWorkerReady || Promise.resolve()
+            ])
+                .then(([manifest]) => {
+                    const entries = manifest.entries || [];
+                    if (manifest.missing) {
+                        const panel = document.getElementById("firstrun-gate");
+                        panel.querySelector("code.firstrun-default").textContent =
+                            `${manifest.defaultPath}/Generals + ${manifest.defaultPath}/GeneralsZH`;
+                        panel.querySelector("code.firstrun-config").textContent = manifest.configPath;
+                        panel.hidden = false;
+                        return; // dependency stays: no game files, no game
+                    }
+                    for (const entry of entries) {
+                        FS.mkdirTree(entry.mount);
+                        mountStreamedArchive(entry.mount, entry.name, entry.url, entry.size);
+                    }
+                    const total = entries.reduce((sum, entry) => sum + entry.size, 0);
+                    appendOutput([
+                        `Streaming ${entries.length} game archives (${(total / 1073741824).toFixed(1)} GB) on demand.`
+                    ], "log");
+                    removeRunDependency(dependency);
+                })
+                .catch((error) => {
+                    appendOutput([`Asset manifest failed: ${error.message}`], "error");
+                    removeRunDependency(dependency);
+                });
+        });
+
+        // GeneralsX @feature Codex 05/08/2026 The game is configured by Options.ini, not the command line, so the
+        // user data dir has to survive a page load. IDBFS backs it with browser storage; syncfs moves it both ways.
+        const generalsXUserDataPath = "/home/web_user/.local/share/GeneralsX/GeneralsZH";
+        const defaultOptionsIni = "Resolution = 1280 720\n";
+        let userDataReady = false;
+
+        function persistUserData() {
+            if (!userDataReady) {
+                return;
+            }
+            try {
+                FS.syncfs(false, (error) => {
+                    if (error) {
+                        appendOutput([`User data save failed: ${error}`], "error");
+                    }
+                });
+            } catch (error) {
+                // runtime already torn down
+            }
+        }
+
+        if (!isAutomatedTest) {
+            modulePreRun.push(() => {
+                const dependency = "generalsx-user-data";
+                addRunDependency(dependency);
+                FS.mkdirTree(generalsXUserDataPath);
+                FS.mount(IDBFS, {}, generalsXUserDataPath);
+                FS.syncfs(true, (error) => {
+                    if (error) {
+                        appendOutput([`User data restore failed: ${error}`], "error");
+                    }
+                    const optionsPath = `${generalsXUserDataPath}/Options.ini`;
+                    let hasOptions = true;
+                    try {
+                        FS.stat(optionsPath);
+                    } catch (missing) {
+                        hasOptions = false;
+                    }
+                    // Escape hatch: ?resetOptions=1 restores the shipped defaults if in-game settings go bad.
+                    if (!hasOptions || runtimeQuery.get("resetOptions") === "1") {
+                        FS.writeFile(optionsPath, defaultOptionsIni);
+                    }
+                    // Aspect selector: apply once when the player changed it, then leave in-game choices alone.
+                    if (localStorage.getItem("generalsX.aspectApply") === "1") {
+                        const resolution = localStorage.getItem("generalsX.aspect") === "4:3"
+                            ? "Resolution = 1024 768" : "Resolution = 1280 720";
+                        let text = FS.readFile(optionsPath, { encoding: "utf8" });
+                        text = /^Resolution = /m.test(text)
+                            ? text.replace(/^Resolution = .*$/m, resolution)
+                            : `${text}${resolution}\n`;
+                        FS.writeFile(optionsPath, text);
+                        localStorage.removeItem("generalsX.aspectApply");
+                    }
+                    userDataReady = true;
+                    removeRunDependency(dependency);
+                });
+            });
+            window.setInterval(persistUserData, 10000);
+            window.addEventListener("pagehide", persistUserData);
+        }
+        if (hasReferenceSettings || isBotStress || isReplayStress) {
+            modulePreRun.push(() => {
+                const userDataPath = "/home/web_user/.local/share/GeneralsX/GeneralsZH";
+                const options = isBotStress || isReplayStress
+                    ? `AnisotropyLevel = 16\nAntiAliasing = 4\nDynamicLOD = No\nExtraAnimations = Yes\nGameTimeFontSize = 0\nHeatEffects = Yes\nIdealStaticGameLOD = VeryHigh\nMaxParticleCount = 5000\nNetworkLatencyFontSize = 0\nRenderFpsFontSize = 0\nShowSoftWaterEdge = Yes\nShowTrees = Yes\nStaticGameLOD = VeryHigh\nSystemTimeFontSize = 0\nTextureFilter = Anisotropic\nTextureReduction = 0\nUseCloudMap = Yes\nUseLightMap = Yes\nUseShadowDecals = Yes\nUseShadowVolumes = Yes\nCursorCaptureEnabledInWindowedGame = No\nCursorCaptureEnabledInWindowedMenu = No\nCursorCaptureEnabledInFullscreenGame = No\nCursorCaptureEnabledInFullscreenMenu = No\n`
+                    : `IdealStaticGameLOD = ${staticGameLOD}\nStaticGameLOD = ${staticGameLOD}\nCursorCaptureEnabledInWindowedGame = No\nCursorCaptureEnabledInWindowedMenu = No\nCursorCaptureEnabledInFullscreenGame = No\nCursorCaptureEnabledInFullscreenMenu = No\n`;
+                const sagePatch = isBotStress || isReplayStress
+                    ? `GameData\n  MaxCameraHeight = 350\n  MinCameraHeight = 100\n  EnforceMaxCameraHeight = No\n  KeyboardScrollSpeedFactor = 1.0\n  TerrainDrawDistanceScale = 1.05\n  UseFPSLimit = Yes\n  FramesPerSecondLimit = 300\nEnd\n`
+                    : `GameData\n  MaxCameraHeight = ${maxCameraHeight}\n  MinCameraHeight = ${minCameraHeight}\n  EnforceMaxCameraHeight = No\n  KeyboardScrollSpeedFactor = 1.0\n  TerrainDrawDistanceScale = ${terrainDrawDistanceScale}\n  UseFPSLimit = Yes\n  FramesPerSecondLimit = 60\nEnd\n`;
+                FS.mkdirTree(userDataPath);
+                FS.writeFile(`${userDataPath}/Options.ini`, options);
+                FS.writeFile(`${userDataPath}/Options_Instance02.ini`, options);
+                FS.writeFile(`${userDataPath}/SagePatch.ini`, sagePatch);
+            });
+        }
+        if (isReferenceState) {
+            modulePreRun.push(() => {
+                const dependency = "generalsx-parity-save-state";
+                addRunDependency(dependency);
+                fetch(saveStateUrl)
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error(`Save-state request failed: ${response.status}`);
+                        }
+                        return response.arrayBuffer();
+                    })
+                    .then((bytes) => {
+                        const saveDirectory = "/home/web_user/.local/share/GeneralsX/GeneralsZH/Save";
+                        FS.mkdirTree(saveDirectory);
+                        FS.writeFile(`${saveDirectory}/GeneralsXParity.sav`, new Uint8Array(bytes));
+                    })
+                    .catch((error) => appendOutput([error.message], "error"))
+                    .finally(() => removeRunDependency(dependency));
+            });
+        }
+        if (isAutomatedLan) {
+            modulePostRun.push(() => {
+                let attempts = 0;
+                const timer = window.setInterval(() => {
+                    attempts += 1;
+                    if (Module._GeneralsXOpenLanMenu?.()) {
+                        window.clearInterval(timer);
+                        appendOutput(["LAN lobby opened."], "log");
+                    } else if (attempts >= 120) {
+                        window.clearInterval(timer);
+                        appendOutput(["LAN lobby failed to open."], "error");
+                    }
+                }, 250);
+            });
+        }
+
+        var Module = {
+            arguments: runtimeArguments,
+            canvas,
+            preRun: modulePreRun,
+            postRun: modulePostRun,
+            print(...values) {
+                appendOutput(values, "log");
+            },
+            printErr(...values) {
+                appendOutput(values, "error");
+            },
+            setStatus,
+            monitorRunDependencies(remaining) {
+                totalDependencies = Math.max(totalDependencies, remaining);
+                setStatus(remaining ? `Preparing… (${totalDependencies - remaining}/${totalDependencies})` : "");
+            }
+        };
+
+        window.addEventListener("error", (event) => {
+            appendOutput([`Runtime error: ${event.message || "unknown error"}`], "error");
+            setStatus("Runtime error");
+        });
+        window.addEventListener("unhandledrejection", (event) => {
+            const reason = event.reason?.message || String(event.reason || "");
+            const isActivationRejection = event.reason?.name === "NotAllowedError" || reason === "not granted";
+            if (event.reason && !isActivationRejection) {
+                appendOutput([`Unhandled rejection: ${reason}`], "error");
+                setStatus("Runtime error");
+            }
+        });
+
+        renderCopy();
+        setStatus("Downloading…");
+        window.setInterval(enforceBrowserMemoryLimit, 2000);
+    </script>
+    {{{ SCRIPT }}}
+</body>
+</html>
