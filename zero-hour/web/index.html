@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zero Hour in the browser</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main id="setup">
+  <h1>Zero Hour in the browser</h1>
+  <p class="lead">Runs the open-source engine on your own copy of the game. Your files stay on this computer.</p>
+  <p id="unsupported" class="error" hidden></p>
+
+  <section>
+    <h2>1. Your game files</h2>
+    <div class="row">
+      <button id="pick-zh" type="button">Choose Zero Hour folder</button>
+      <span id="zh-status" class="status">Not chosen</span>
+    </div>
+    <div class="row">
+      <button id="pick-gen" type="button">Choose Generals folder</button>
+      <span id="gen-status" class="status">Not chosen</span>
+    </div>
+    <p class="hint">Zero Hour needs both. Pick each game's install folder, the one that holds the <code>.big</code> files.</p>
+  </section>
+
+  <section>
+    <h2>2. Mods <span class="optional">optional</span></h2>
+    <div class="row">
+      <button id="pick-mods" type="button">Add mod files</button>
+      <span id="mods-status" class="status">None</span>
+    </div>
+    <p class="hint">Mod <code>.big</code> archives are loaded on top of the game. Everyone in a match needs the same mods.</p>
+  </section>
+
+  <section>
+    <h2>3. Multiplayer room <span class="optional">optional</span></h2>
+    <div class="row">
+      <input id="room" type="text" maxlength="32" placeholder="room name" autocomplete="off" spellcheck="false">
+      <button id="copy-link" type="button" class="secondary">Copy invite link</button>
+    </div>
+    <p class="hint">Players who open the same room see each other under Multiplayer → Network in the game menu.</p>
+  </section>
+
+  <button id="play" type="button" class="primary" disabled>Play</button>
+  <p id="progress" class="status" role="status"></p>
+  <input id="dir-input" type="file" webkitdirectory hidden>
+  <input id="mod-input" type="file" accept=".big" multiple hidden>
+</main>
+<canvas id="canvas" tabindex="0" hidden></canvas>
+<script type="module" src="main.js"></script>
+</body>
+</html>
