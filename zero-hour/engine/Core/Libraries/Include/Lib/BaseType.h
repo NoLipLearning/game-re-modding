@@ -31,6 +31,7 @@
 
 #include "Lib/BaseTypeCore.h"
 #include "Lib/trig.h"
+#include <type_traits> // std::is_pointer; newer libc++ no longer pulls it in transitively
 
 //-----------------------------------------------------------------------------
 typedef wchar_t WideChar;  ///< multi-byte character representations

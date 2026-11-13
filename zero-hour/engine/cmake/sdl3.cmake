@@ -27,7 +27,7 @@ if(SAGE_USE_SDL3)
         
         # SDL3 - Core graphics, input, events, filesystem
         set(SDL3_VERSION "3.4.2")
-        set(SDL3_URL "https://github.com/libsdl-org/SDL/releases/download/release-${SDL3_VERSION}/SDL3-${SDL3_VERSION}.tar.gz")
+        set(SDL3_URL "https://www.libsdl.org/release/SDL3-${SDL3_VERSION}.tar.gz")
         set(SDL3_URL_HASH "SHA256=ef39a2e3f9a8a78296c40da701967dd1b0d0d6e267e483863ce70f8a03b4050c")
         
         FetchContent_Declare(
@@ -115,7 +115,7 @@ if(SAGE_USE_SDL3)
         message(STATUS "Configuring SDL3_image (v3.4.0) with FetchContent (native build)...")
         
         set(SDL3_IMAGE_VERSION "3.4.0")
-        set(SDL3_IMAGE_URL "https://github.com/libsdl-org/SDL_image/releases/download/release-${SDL3_IMAGE_VERSION}/SDL3_image-${SDL3_IMAGE_VERSION}.tar.gz")
+        set(SDL3_IMAGE_URL "https://www.libsdl.org/projects/SDL_image/release/SDL3_image-${SDL3_IMAGE_VERSION}.tar.gz")
         set(SDL3_IMAGE_URL_HASH "SHA256=2ceb75eab4235c2c7e93dafc3ef3268ad368ca5de40892bf8cffdd510f29d9d8")
         
         FetchContent_Declare(

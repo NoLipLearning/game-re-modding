@@ -79,6 +79,9 @@ EM_JS(Int, GeneralsXWebLanBind, (UnsignedInt ip, UnsignedShort port), {
 			+ globalThis.location.host + "/GeneralsXLan",
 	];
 	if (relayUrls[0] === relayUrls[1]) relayUrls.pop();
+	// The page may name the relay itself (an internet relay, or a room on one): that URL is then
+	// the only one tried, so every player in a room meets on the same relay.
+	if (globalThis.generalsXLanRelayUrl) relayUrls.splice(0, relayUrls.length, globalThis.generalsXLanRelayUrl);
 	const socket = new WebSocket(relayUrls[0]);
 	socket.binaryType = "arraybuffer";
 	const state = { socket, virtualIP, port, incoming: [], outgoing: [], incomingBytes: 0 };

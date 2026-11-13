@@ -6,14 +6,18 @@ endif()
 # GeneralsX @build Codex 04/08/2026 Keep the browser runtime single-threaded until game work is explicitly moved to workers.
 add_compile_options(-fexceptions)
 
+# Name of the Emscripten WebGPU port, or the path to a locally built emdawnwebgpu.port.py
+# for machines that cannot download the port from GitHub releases.
+set(GENERALSX_EMDAWNWEBGPU_PORT "emdawnwebgpu" CACHE STRING "Emscripten WebGPU port name or .port.py path")
+
 add_library(webgpu_runtime INTERFACE)
 target_compile_definitions(webgpu_runtime INTERFACE SAGE_USE_WEBGPU)
 target_compile_options(webgpu_runtime INTERFACE
-    --use-port=emdawnwebgpu
+    --use-port=${GENERALSX_EMDAWNWEBGPU_PORT}
     -fexceptions
 )
 target_link_options(webgpu_runtime INTERFACE
-    --use-port=emdawnwebgpu
+    --use-port=${GENERALSX_EMDAWNWEBGPU_PORT}
     -fexceptions
 	# GeneralsX @feature Codex 04/08/2026 Suspend synchronous legacy initialization while WebGPU requests resolve.
 	"-sASYNCIFY=1"
