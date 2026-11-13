@@ -1,4 +1,5 @@
 import { FileBridge } from "./filebridge.js";
+import { listRoomMods, shareMod, removeRoomMod, fetchRoomMod } from "./roommods.js";
 
 const $ = (id) => document.getElementById(id);
 const chosen = { zh: [], gen: [], mods: [] };
@@ -40,6 +41,7 @@ function refresh() {
   $("gen-status").textContent = describe(chosen.gen);
   $("mods-status").textContent = chosen.mods.length ? chosen.mods.map((mod) => mod.path).join(", ") : "None";
   const hasArchives = (entries) => entries.some((entry) => /\.big$/i.test(entry.path));
+  $("share-mods").disabled = !chosen.mods.length;
   $("play").disabled = problems.length > 0 || !hasArchives(chosen.zh) || !hasArchives(chosen.gen);
 }
 
@@ -65,6 +67,71 @@ $("copy-link").onclick = async () => {
   setTimeout(() => { $("copy-link").textContent = "Copy invite link"; }, 1500);
 };
 
+// --- mods shared with the room ------------------------------------------------
+const megabytes = (bytes) => (bytes / 1048576).toFixed(bytes < 10485760 ? 1 : 0) + " MB";
+let roomMods = [];
+
+function showRoomMods(room, mods) {
+  roomMods = mods;
+  $("room-mods-name").textContent = room;
+  const list = $("room-mods-list");
+  list.replaceChildren(...mods.map((mod) => {
+    const item = document.createElement("li");
+    const label = document.createElement("span");
+    label.textContent = `${mod.name} (${megabytes(mod.size)})`;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "Remove";
+    remove.onclick = () => changeRoomMods(room, () => removeRoomMod(room, mod.name, $("upload-key").value));
+    item.append(label, remove);
+    return item;
+  }));
+  if (!mods.length) {
+    const none = document.createElement("li");
+    none.className = "status";
+    none.textContent = "Nothing shared yet";
+    list.append(none);
+  }
+}
+
+async function loadRoomMods() {
+  const room = cleanRoom($("room").value);
+  $("room-mods").hidden = !room;
+  if (!room) { roomMods = []; return; }
+  try {
+    showRoomMods(room, await listRoomMods(room));
+  } catch (error) {
+    showRoomMods(room, []);
+    $("share-status").textContent = "Could not read the room's mods: " + error.message;
+  }
+}
+
+async function changeRoomMods(room, change) {
+  const status = $("share-status");
+  status.classList.remove("error");
+  try {
+    showRoomMods(room, await change((text) => { status.textContent = text; }));
+    status.textContent = "";
+  } catch (error) {
+    status.textContent = error.message;
+    status.classList.add("error");
+  }
+}
+
+$("room").addEventListener("change", loadRoomMods);
+$("share-mods").onclick = () => {
+  const room = cleanRoom($("room").value);
+  return changeRoomMods(room, async (say) => {
+    let mods = roomMods;
+    for (const { path, file } of chosen.mods) {
+      mods = await shareMod(room, path, file, $("upload-key").value,
+        (done) => say(`Uploading ${path}: ${Math.round(done * 100)}%`));
+    }
+    return mods;
+  });
+};
+loadRoomMods();
+
 // --- starting the game --------------------------------------------------------
 $("play").onclick = async () => {
   const progress = $("progress");
@@ -74,6 +141,15 @@ $("play").onclick = async () => {
     const scheme = location.protocol === "https:" ? "wss://" : "ws://";
     // The engine reads this when it opens its network sockets.
     globalThis.generalsXLanRelayUrl = `${scheme}${location.host}/GeneralsXLan?room=${room}`;
+
+    // Mods shared with the room, unless the player picked a file of the same name.
+    const mine = new Set(chosen.mods.map((mod) => mod.path.toLowerCase()));
+    const shared = [];
+    for (const mod of room === "lobby" ? [] : await listRoomMods(room)) {
+      if (mine.has(mod.name.toLowerCase())) continue;
+      progress.textContent = `Getting mod ${mod.name}…`;
+      shared.push({ path: mod.name, file: await fetchRoomMod(room, mod) });
+    }
 
     progress.textContent = "Loading the engine…";
     const { default: createGeneralsX } = await import("./GeneralsXZH.js");
@@ -91,7 +167,7 @@ $("play").onclick = async () => {
         for (const { path, file } of chosen.gen) bridge.mount(FS, "/Generals/" + path, file);
         for (const { path, file } of chosen.zh) bridge.mount(FS, "/GeneralsZH/" + path, file);
         // Mods go in the Zero Hour folder, where the engine scans for archives.
-        for (const { path, file } of chosen.mods) bridge.mount(FS, "/GeneralsZH/" + path, file);
+        for (const { path, file } of [...shared, ...chosen.mods]) bridge.mount(FS, "/GeneralsZH/" + path, file);
         FS.mkdirTree("/fonts");
         FS.writeFile("/fonts/GeneralsX.ttf", font);
         // Settings and saves persist in this browser between visits.
@@ -106,6 +182,7 @@ $("play").onclick = async () => {
         $("setup").hidden = true;
         canvas.hidden = false;
         canvas.focus();
+        globalThis.generalsX = this; // for the browser console when something goes wrong
         this.FS.chdir("/GeneralsZH");
         this.callMain([]);
       },

@@ -26,21 +26,32 @@
   </section>
 
   <section>
-    <h2>2. Mods <span class="optional">optional</span></h2>
+    <h2>2. Multiplayer room <span class="optional">optional</span></h2>
+    <div class="row">
+      <input id="room" type="text" maxlength="32" placeholder="room name" autocomplete="off" spellcheck="false" aria-label="Room name">
+      <button id="copy-link" type="button" class="secondary">Copy invite link</button>
+    </div>
+    <p class="hint">Players who open the same room see each other under Multiplayer → Network in the game menu.</p>
+  </section>
+
+  <section>
+    <h2>3. Mods <span class="optional">optional</span></h2>
     <div class="row">
       <button id="pick-mods" type="button">Add mod files</button>
       <span id="mods-status" class="status">None</span>
     </div>
     <p class="hint">Mod <code>.big</code> archives are loaded on top of the game. Everyone in a match needs the same mods.</p>
-  </section>
-
-  <section>
-    <h2>3. Multiplayer room <span class="optional">optional</span></h2>
-    <div class="row">
-      <input id="room" type="text" maxlength="32" placeholder="room name" autocomplete="off" spellcheck="false">
-      <button id="copy-link" type="button" class="secondary">Copy invite link</button>
+    <div id="room-mods" hidden>
+      <h3>Shared with room <span id="room-mods-name"></span></h3>
+      <ul id="room-mods-list"></ul>
+      <p class="hint">Everyone who joins this room gets these automatically.</p>
+      <div class="row">
+        <input id="upload-key" type="password" placeholder="upload key" autocomplete="off" aria-label="Upload key">
+        <button id="share-mods" type="button" class="secondary" disabled>Share my mod files with the room</button>
+      </div>
+      <p class="hint">Sharing needs the upload key the server printed when it started. Share only mods you made or may pass on, never the original game's files.</p>
+      <p id="share-status" class="status" role="status"></p>
     </div>
-    <p class="hint">Players who open the same room see each other under Multiplayer → Network in the game menu.</p>
   </section>
 
   <button id="play" type="button" class="primary" disabled>Play</button>

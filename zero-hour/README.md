@@ -6,7 +6,7 @@ Goal: Zero Hour playable in a browser tab, with internet multiplayer and uploada
 
 - `engine/` — the game engine, GPL-3.0. See [`engine/UPSTREAM.md`](engine/UPSTREAM.md).
 - `web/` — our page: picks the player's game folders and mods, sets the multiplayer room, starts the engine.
-- `server/` — serves the page and relays multiplayer traffic between players in a room.
+- `server/` — serves the page, relays multiplayer traffic between players in a room, and stores the mods shared with each room.
 - `tools/` — build preparation and bundling scripts.
 
 ## Build and run
@@ -26,21 +26,33 @@ tools/assemble-web.sh         # page + engine -> web/dist
 Open the page in Chrome or Edge, choose your Zero Hour and Generals install folders, and press Play.
 Away from `localhost` the page must be served over HTTPS.
 
+## Sharing mods
+
+The host enters a room name, adds their mod `.big` files, types the upload key and presses
+"Share my mod files with the room". Everyone who opens that room's invite link then gets the
+mods automatically when they press Play; each browser downloads a mod only once.
+
+The server prints a random upload key when it starts; set `UPLOAD_KEY` to choose your own.
+Mods are stored in `server/mods-data` (`MODS_DIR`), up to 1 GiB per file and 4 GiB per room.
+The server refuses files named like the original game's archives.
+
 ## Status
 
 Verified in headless Chromium with stand-in archives: the engine compiles, the page loads it,
 creates the WebGPU canvas, and the engine opens archives through the on-demand file reader.
 The relay passes its tests, including two WebSocket clients exchanging a packet in a room.
+Mod sharing: one browser uploads a stand-in archive, a second browser in the same room
+downloads it and the engine reads it from its game folder.
 
 Not yet verified: anything that needs the real game files — menus, a skirmish, a multiplayer
-match, mods, performance.
+match, a real mod changing the game, performance.
 
 ## Roadmap
 
 1. Run with real game files and fix what breaks.
 2. Two-player match through the relay over the internet.
-3. Mod sharing: upload a mod once, everyone in the room gets it.
-4. Performance work.
+3. Performance work.
+4. Check before a match that every player has the same mods.
 
 ## Game files
 
