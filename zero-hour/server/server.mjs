@@ -63,11 +63,20 @@ export function startServer({
     } catch {
       return res.writeHead(404).end("Not found");
     }
-    res.writeHead(200, {
+    const headers = {
       "Content-Type": TYPES[extname(path)] ?? "application/octet-stream",
-      "Content-Length": stat.size,
       "Cache-Control": "no-cache",
-    });
+      Vary: "Accept-Encoding",
+    };
+    // A pre-compressed copy next to the file (made by tools/assemble-web.sh) saves most of the download.
+    if (/\bgzip\b/.test(req.headers["accept-encoding"] ?? "")) {
+      try {
+        stat = statSync(path + ".gz");
+        path += ".gz";
+        headers["Content-Encoding"] = "gzip";
+      } catch { /* no compressed copy */ }
+    }
+    res.writeHead(200, { ...headers, "Content-Length": stat.size });
     if (req.method === "HEAD") return res.end();
     createReadStream(path).pipe(res);
   });

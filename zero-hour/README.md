@@ -8,6 +8,7 @@ Goal: Zero Hour playable in a browser tab, with internet multiplayer and uploada
 - `web/` — our page: picks the player's game folders and mods, sets the multiplayer room, starts the engine.
 - `server/` — serves the page, relays multiplayer traffic between players in a room, and stores the mods shared with each room.
 - `tools/` — build preparation and bundling scripts.
+- `prebuilt/` — the compiled engine, so the server can be deployed without building it.
 
 ## Build and run
 
@@ -26,6 +27,24 @@ tools/assemble-web.sh         # page + engine -> web/dist
 Open the page in Chrome or Edge, choose your Zero Hour and Generals install folders, and press Play.
 Away from `localhost` the page must be served over HTTPS.
 
+## Putting it online
+
+The server is one container: page, multiplayer relay and mod storage on one port. It uses
+the engine build committed in `prebuilt/`, so the host needs no compiler.
+
+```bash
+docker build -t zero-hour zero-hour
+docker run -p 8080:8080 -e UPLOAD_KEY=choose-a-key -v zh-mods:/data/mods zero-hour
+```
+
+Any host that runs a Dockerfile and supports WebSockets and HTTPS works. For Render, the
+`render.yaml` at the repository root describes the service: New → Blueprint → pick this
+repository. Render generates the upload key (Environment tab). On its free plan the service
+sleeps when idle and shared mods are lost on restart; attach a disk at `/data/mods` to keep them.
+
+If the game stops or shows a black screen, press **Log** in the top right corner: it shows
+the engine's last output with a button to copy it.
+
 ## Sharing mods
 
 The host enters a room name, adds their mod `.big` files, types the upload key and presses
@@ -43,6 +62,8 @@ creates the WebGPU canvas, and the engine opens archives through the on-demand f
 The relay passes its tests, including two WebSocket clients exchanging a packet in a room.
 Mod sharing: one browser uploads a stand-in archive, a second browser in the same room
 downloads it and the engine reads it from its game folder.
+
+The container image builds and serves the page, engine and mod storage.
 
 Not yet verified: anything that needs the real game files — menus, a skirmish, a multiplayer
 match, a real mod changing the game, performance.

@@ -10,6 +10,7 @@ onmessage = ({ data: msg }) => {
   if (msg.type === "init") {
     control = new Int32Array(msg.control);
     data = new Uint8Array(msg.data);
+    postMessage({ type: "ready" });
   } else if (msg.type === "add") {
     files.set(msg.id, msg.file);
   } else if (msg.type === "read") {

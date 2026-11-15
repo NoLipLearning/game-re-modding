@@ -12,6 +12,12 @@ export class FileBridge {
     this.control = new Int32Array(new SharedArrayBuffer(8));
     this.data = new Uint8Array(new SharedArrayBuffer(BLOCK));
     this.worker = new Worker(workerUrl);
+    // Wait for this before the engine starts: reads block the page's thread, and a
+    // worker that is still starting up would never get to answer them.
+    this.ready = new Promise((resolve, reject) => {
+      this.worker.onmessage = ({ data }) => { if (data.type === "ready") resolve(); };
+      this.worker.onerror = () => reject(new Error("The file reader could not start"));
+    });
     this.worker.postMessage({ type: "init", control: this.control.buffer, data: this.data.buffer });
     this.cache = new Map(); // "id:block" -> Uint8Array, in least-recently-used order
     this.nextId = 1;
@@ -27,7 +33,10 @@ export class FileBridge {
       Atomics.store(this.control, 0, 1);
       this.worker.postMessage({ type: "read", id, offset: block * BLOCK, length: BLOCK });
       // The main thread may not sleep (Atomics.wait is forbidden there), so it spins.
-      while (Atomics.load(this.control, 0) === 1) { /* waiting for the worker */ }
+      const giveUp = performance.now() + 30000;
+      while (Atomics.load(this.control, 0) === 1) {
+        if (performance.now() > giveUp) throw new Error("Reading a game file timed out");
+      }
       if (Atomics.load(this.control, 0) !== 2) throw new Error("Reading a game file failed");
       bytes = this.data.slice(0, Atomics.load(this.control, 1));
       if (this.cache.size >= CACHE_BLOCKS) this.cache.delete(this.cache.keys().next().value);

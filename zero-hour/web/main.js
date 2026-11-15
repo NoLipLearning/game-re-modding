@@ -132,6 +132,34 @@ $("share-mods").onclick = () => {
 };
 loadRoomMods();
 
+// --- when the game stops ------------------------------------------------------
+const gameLog = []; // the engine's most recent output
+function record(line, show) {
+  gameLog.push(line);
+  if (gameLog.length > 400) gameLog.shift();
+  show(line);
+}
+let ended = false;
+function gameEnded(reason) {
+  if (ended) return;
+  ended = true;
+  $("canvas").hidden = true;
+  $("show-log").hidden = true;
+  $("setup").hidden = true;
+  $("ended-reason").textContent = reason;
+  $("ended-log").value = gameLog.join("\n");
+  $("ended").hidden = false;
+  $("ended-log").scrollTop = $("ended-log").scrollHeight;
+}
+$("copy-log").onclick = async () => {
+  await navigator.clipboard.writeText($("ended-log").value);
+  $("copy-log").textContent = "Copied";
+  setTimeout(() => { $("copy-log").textContent = "Copy log"; }, 1500);
+};
+$("reload").onclick = () => location.reload();
+// For when the game hangs or shows a black screen without stopping by itself.
+$("show-log").onclick = () => gameEnded("You stopped the game to look at its log.");
+
 // --- starting the game --------------------------------------------------------
 $("play").onclick = async () => {
   const progress = $("progress");
@@ -155,15 +183,19 @@ $("play").onclick = async () => {
     const { default: createGeneralsX } = await import("./GeneralsXZH.js");
     const font = new Uint8Array(await (await fetch("fonts/LiberationSans-Regular.ttf")).arrayBuffer());
     const canvas = $("canvas");
+    const bridge = new FileBridge();
+    await bridge.ready;
 
     await createGeneralsX({
       canvas,
       noInitialRun: true,
-      print: (line) => console.log(line),
-      printErr: (line) => console.warn(line),
+      print: (line) => record(line, console.log),
+      printErr: (line) => record(line, console.warn),
+      onExit: (code) => gameEnded(code === 0 ? "The game was closed." : `The game stopped with exit code ${code}.`),
+      onAbort: (what) => gameEnded("The game crashed: " + what),
+      quit: (code) => gameEnded(code === 0 ? "The game was closed." : `The game stopped with exit code ${code}.`),
       preRun: [(module) => {
         const { FS } = module;
-        const bridge = new FileBridge();
         for (const { path, file } of chosen.gen) bridge.mount(FS, "/Generals/" + path, file);
         for (const { path, file } of chosen.zh) bridge.mount(FS, "/GeneralsZH/" + path, file);
         // Mods go in the Zero Hour folder, where the engine scans for archives.
@@ -181,10 +213,24 @@ $("play").onclick = async () => {
       onRuntimeInitialized() {
         $("setup").hidden = true;
         canvas.hidden = false;
+        $("show-log").hidden = false;
         canvas.focus();
+        // The engine runs in pieces between frames, so a crash can surface as a page error.
+        const crashed = (event) => {
+          const error = event.reason ?? event.error ?? event.message;
+          record(String(error?.stack ?? error), console.error);
+          gameEnded("The game crashed: " + (error?.message ?? error));
+        };
+        addEventListener("unhandledrejection", crashed);
+        addEventListener("error", crashed);
         globalThis.generalsX = this; // for the browser console when something goes wrong
         this.FS.chdir("/GeneralsZH");
-        this.callMain([]);
+        try {
+          this.callMain([]);
+        } catch (error) {
+          record(String(error?.stack ?? error), console.error);
+          gameEnded("The game crashed: " + (error?.message ?? error));
+        }
       },
     });
   } catch (error) {

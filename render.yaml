@@ -1,0 +1,12 @@
+# Render blueprint: runs the Zero Hour page, relay and mod storage as one web service.
+services:
+  - type: web
+    name: zero-hour
+    runtime: docker
+    plan: free
+    dockerfilePath: ./zero-hour/Dockerfile
+    dockerContext: ./zero-hour
+    healthCheckPath: /
+    envVars:
+      - key: UPLOAD_KEY
+        generateValue: true

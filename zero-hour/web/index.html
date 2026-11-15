@@ -60,6 +60,20 @@
   <input id="mod-input" type="file" accept=".big" multiple hidden>
 </main>
 <canvas id="canvas" tabindex="0" hidden></canvas>
+<button id="show-log" type="button" hidden title="Stop the game and show its log">Log</button>
+<main id="ended" hidden>
+  <h1>The game stopped</h1>
+  <p id="ended-reason" class="lead"></p>
+  <section>
+    <h2>Last lines of the game's log</h2>
+    <textarea id="ended-log" readonly rows="14" aria-label="Game log"></textarea>
+    <div class="row">
+      <button id="copy-log" type="button">Copy log</button>
+      <button id="reload" type="button" class="secondary">Back to start</button>
+    </div>
+    <p class="hint">If the game stopped unexpectedly, the log says why. Copy it when reporting a problem.</p>
+  </section>
+</main>
 <script type="module" src="main.js"></script>
 </body>
 </html>

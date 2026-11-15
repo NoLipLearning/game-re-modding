@@ -1,0 +1,5 @@
+engine
+web/dist
+server/node_modules
+server/mods-data
+server/test

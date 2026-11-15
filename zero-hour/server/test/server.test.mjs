@@ -47,3 +47,20 @@ test("two browsers in a room exchange a datagram over WebSocket", async () => {
     assert.deepEqual(rooms, [{ room: "game1", sockets: 2 }]);
   } finally { a.close(); b.close(); http.close(); }
 });
+
+test("sends the pre-compressed copy of a file to clients that accept gzip", async () => {
+  const { gzipSync } = await import("node:zlib");
+  const root = mkdtempSync(join(tmpdir(), "zh-"));
+  writeFileSync(join(root, "big.js"), "let a = 1;".repeat(100));
+  writeFileSync(join(root, "big.js.gz"), gzipSync("let a = 1;".repeat(100)));
+  const { http, port } = await startServer({ port: 0, webRoot: root });
+  try {
+    const packed = await fetch(`http://127.0.0.1:${port}/big.js`);
+    assert.equal(packed.headers.get("content-encoding"), "gzip");
+    assert.equal(packed.headers.get("content-type"), "text/javascript");
+    assert.equal(await packed.text(), "let a = 1;".repeat(100));
+    const plain = await fetch(`http://127.0.0.1:${port}/big.js`, { headers: { "Accept-Encoding": "identity" } });
+    assert.equal(plain.headers.get("content-encoding"), null);
+    assert.equal(plain.headers.get("content-length"), "1000");
+  } finally { http.close(); }
+});
